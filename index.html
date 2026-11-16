@@ -1,0 +1,666 @@
+<title>Chapter 7 Sketch Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: a one-screen study app. Home is a scrolling ladder of topics; practice is a split
+   view with the question on the left and a large drawing sheet on the right. */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --sunken: #e9edf2; --ink: #17202b; --muted: #5a6675; --line: #d9dfe7;
+  --accent: #2b55d3; --accent-ink: #ffffff; --accent-soft: #e4eafc;
+  --good: #15803d; --good-soft: #e0f3e6; --warn: #a25b00; --warn-soft: #fbedd2; --bad: #c0281f; --bad-soft: #fbe3e0;
+  --l1: #1f9a8a; --l2: #2b84c6; --l3: #4763d6; --l4: #7a4fcf; --l5: #b5388a;
+  --sheet: #ffffff; --dot: #cfd6df;
+  --pen-ink: #111827; --pen-blue: #1d4ed8; --pen-red: #c81e1e; --pen-green: #15803d;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141a; --surface: #182029; --sunken: #121920; --ink: #e8edf3; --muted: #9ba8b7; --line: #2a3541;
+  --accent: #86a6ff; --accent-ink: #0c1424; --accent-soft: #1d2a4a;
+  --good: #5ccf85; --good-soft: #143222; --warn: #f0b354; --warn-soft: #3a2c10; --bad: #ff8a80; --bad-soft: #3d1a17;
+  --l1: #3cc2b0; --l2: #56a8e6; --l3: #7d94f2; --l4: #a585ee; --l5: #e06db5;
+  --sheet: #141b23; --dot: #2c3743;
+  --pen-ink: #eef2f6; --pen-blue: #7da2ff; --pen-red: #ff7b72; --pen-green: #5ccf85;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0f141a; --surface: #182029; --sunken: #121920; --ink: #e8edf3; --muted: #9ba8b7; --line: #2a3541;
+  --accent: #86a6ff; --accent-ink: #0c1424; --accent-soft: #1d2a4a;
+  --good: #5ccf85; --good-soft: #143222; --warn: #f0b354; --warn-soft: #3a2c10; --bad: #ff8a80; --bad-soft: #3d1a17;
+  --l1: #3cc2b0; --l2: #56a8e6; --l3: #7d94f2; --l4: #a585ee; --l5: #e06db5;
+  --sheet: #141b23; --dot: #2c3743;
+  --pen-ink: #eef2f6; --pen-blue: #7da2ff; --pen-red: #ff7b72; --pen-green: #5ccf85;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5;
+  display: flex; flex-direction: column; -webkit-text-size-adjust: 100%; }
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
+
+.bar { display: flex; align-items: center; gap: 12px; padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--surface); flex: none; }
+.bar .brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; white-space: nowrap; }
+.bar .crumb { color: var(--muted); font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.bar .tally { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 10px;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px; }
+.iconbtn svg { width: 20px; height: 20px; flex: none; }
+.iconbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.iconbtn:disabled { opacity: .4; cursor: default; }
+
+main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 24px; }
+
+/* Home */
+.intro { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; justify-content: space-between; }
+.intro .eyebrow { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.intro h1 { font-size: clamp(28px, 4.4vw, 42px); letter-spacing: -0.02em; margin-top: 6px; }
+.intro p { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
+.resume { display: flex; flex-direction: column; gap: 10px; min-width: min(100%, 260px); }
+.meter { height: 8px; border-radius: 99px; background: var(--sunken); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn:disabled { opacity: .5; cursor: default; }
+.seg { display: inline-flex; padding: 4px; background: var(--sunken); border-radius: 12px; gap: 4px; align-self: flex-start; }
+.seg button { border: 0; background: transparent; padding: 8px 16px; border-radius: 9px; font-weight: 600; color: var(--muted); min-height: 40px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.topics { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.topic { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px;
+  display: flex; flex-direction: column; gap: 14px; }
+.topic h3 { font-size: 19px; }
+.topic p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; align-items: end; height: 34px; }
+.ladder span { border-radius: 4px; background: var(--sunken); position: relative; overflow: hidden; }
+.ladder span i { position: absolute; inset: auto 0 0 0; background: var(--c); }
+.topic .ladder { margin-top: auto; }
+.topic .foot { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.group h2 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.group .sub { color: var(--muted); font-size: 14px; margin: 2px 0 12px; }
+.qlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+.qtile { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; min-height: 72px; }
+.qtile .t { font-weight: 600; }
+.qtile .m { grid-column: 1; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.qtile .st { grid-row: 1 / span 2; grid-column: 2; }
+.steps { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.steps i { width: 4px; border-radius: 1px; background: var(--line); }
+.steps i.on { background: var(--c); }
+.lvl { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--c); }
+.dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.dot.done { background: var(--good); border-color: var(--good); color: var(--surface); }
+.dot.part { border-color: var(--warn); color: var(--warn); }
+
+/* Practice */
+.practice { height: 100%; display: grid; grid-template-columns: minmax(300px, 38%) 1fr; min-height: 0; }
+.qpane { overflow: auto; -webkit-overflow-scrolling: touch; padding: 20px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 16px; border-right: 1px solid var(--line); min-width: 0; }
+.qpane h2 { font-size: 24px; letter-spacing: -0.01em; }
+.prompt { margin: 0; max-width: 60ch; }
+.scheme { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 14px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r); color: var(--ink); }
+.mol { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100%; }
+.mol svg { display: block; max-width: 100%; height: auto; }
+.mol figcaption { font-size: 12px; color: var(--muted); text-align: center; max-width: 22ch; }
+.mol .fallback { font-family: ui-monospace, Menlo, monospace; font-size: 13px; padding: 8px; }
+.plus { font-size: 20px; color: var(--muted); }
+.arrow { display: flex; flex-direction: column; align-items: center; min-width: 70px; font-size: 13px; text-align: center; gap: 3px; }
+.arrow .shaft { width: 100%; min-width: 64px; height: 2px; background: var(--ink); position: relative; }
+.arrow .shaft::after { content: ""; position: absolute; right: -1px; top: -4px; border-left: 9px solid var(--ink); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.arrow span:empty { display: none; }
+.blank { min-width: 54px; height: 54px; padding: 0 10px; border: 2px dashed var(--muted); border-radius: 10px; display: grid; place-items: center;
+  font-family: var(--display); font-weight: 700; color: var(--muted); }
+.stext { font-family: var(--display); font-weight: 700; font-size: 17px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.note { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card h3 { font-size: 17px; }
+.verdict { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-weight: 600; font-size: 14px; }
+.pill.good { background: var(--good-soft); color: var(--good); } .pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.bad { background: var(--bad-soft); color: var(--bad); }
+.score { font-family: var(--display); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; }
+.seen { font-size: 14px; color: var(--muted); margin: 0; }
+.seen b { color: var(--ink); font-weight: 600; }
+.rubric { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rubric li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: start; font-size: 15px; }
+.rubric .mk { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.rubric .yes .mk { background: var(--good-soft); color: var(--good); } .rubric .partial .mk { background: var(--warn-soft); color: var(--warn); } .rubric .no .mk { background: var(--bad-soft); color: var(--bad); }
+.rubric .plain .mk { background: var(--sunken); color: var(--muted); }
+.rubric small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+.rubric .pts { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px; }
+.keymols { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; color: var(--ink); }
+
+.padpane { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12px; padding-right: max(12px, env(safe-area-inset-right, 0px)); gap: 10px;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools .sp { flex: 1; }
+.swatch { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; padding: 0; }
+.swatch i { width: 22px; height: 22px; border-radius: 50%; background: var(--c); }
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.sizes { display: inline-flex; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.sizes button { width: 40px; height: 42px; border: 0; background: transparent; display: grid; place-items: center; padding: 0; }
+.sizes button i { border-radius: 50%; background: var(--ink); width: var(--d); height: var(--d); }
+.sizes button[aria-pressed="true"] { background: var(--accent-soft); }
+.sheet { flex: 1; min-height: 0; position: relative; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
+  background-color: var(--sheet); background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size: 24px 24px; }
+.sheet canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.sheet .ghost { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; text-align: center; padding: 20px; font-size: 15px; }
+.actions { display: flex; gap: 10px; align-items: center; }
+.actions .status { flex: 1; min-width: 0; font-size: 14px; color: var(--muted); }
+.actions .status.err { color: var(--bad); }
+.spin { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -3px; }
+@keyframes sp { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+
+@media (max-width: 859px) {
+  .practice { display: flex; flex-direction: column; height: auto; }
+  .qpane { border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .padpane { padding-left: max(12px, env(safe-area-inset-left, 0px)); }
+  .sheet { flex: none; height: 62vh; min-height: 340px; }
+  .bar .brand.hide-sm { display: none; }
+}
+</style>
+
+<header class="bar">
+  <button class="iconbtn" id="back" aria-label="Back" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <span class="brand" id="brand">Chapter 7 Sketch Lab</span>
+  <span class="crumb" id="crumb"></span>
+  <span class="tally" id="tally"></span>
+</header>
+<main id="main"></main>
+
+<script src="structures.js"></script>
+<script src="questions.js"></script>
+<script>
+(function () {
+  'use strict';
+  var B = window.BANK || (typeof BANK !== 'undefined' ? BANK : null);
+  var main = document.getElementById('main');
+  if (!B) { main.innerHTML = '<div class="wrap"><p>The question bank did not load. Reload the page to try again.</p></div>'; return; }
+
+  var Q = {}; B.questions.forEach(function (q) { Q[q.id] = q; });
+  var ORDER = B.questions.slice().sort(function (a, b) { return a.level - b.level || tIndex(a.topic) - tIndex(b.topic); });
+  function tIndex(id) { for (var i = 0; i < B.topics.length; i++) if (B.topics[i].id === id) return i; return 0; }
+  function topic(id) { return B.topics[tIndex(id)]; }
+  function level(n) { return B.levels[n - 1]; }
+
+  /* ---------- saved progress (this device only) ---------- */
+  var KEY = 'ch7-sketch-lab-v1';
+  var store = { done: {}, homeMode: 'topics', careful: false };
+  try { var raw = localStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && p.done) store = Object.assign(store, p); } } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+  function best(id) { return store.done[id] ? store.done[id].best : null; }
+  function isDone(id) { var b = best(id); return b !== null && b >= 0.9; }
+  function record(id, frac) { var d = store.done[id] || { best: 0, tries: 0 }; d.tries++; d.best = Math.max(d.best, frac); store.done[id] = d; save(); }
+
+  /* ---------- session state ---------- */
+  var hot = window.claude && window.claude.hot;
+  var seed = (hot && hot.data) || {};
+  var drawings = seed.drawings || {};   // question id -> list of strokes
+  var results = seed.results || {};     // question id -> last grading result
+  var revealed = {}, hinted = {};
+  if (hot && hot.snapshot) { try { hot.snapshot(function () { return { drawings: drawings, results: results }; }); } catch (e) {} }
+
+  var samplePromise = (window.claude && window.claude.use) ? window.claude.use('sample').catch(function () { return null; }) : Promise.resolve(null);
+
+  /* ---------- small DOM helpers ---------- */
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'class') n.className = attrs[k]; else if (k === 'text') n.textContent = attrs[k];
+      else if (k === 'html') n.innerHTML = attrs[k]; else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), attrs[k]);
+      else if (attrs[k] !== false && attrs[k] != null) n.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+  var ICON = {
+    eraser: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l9-10 7 6-7 8H8z"/><path d="M9 11l6 6"/><path d="M13 20h7"/></svg>',
+    undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L4 9l4 4"/><path d="M4 9h10a6 6 0 010 12h-4"/></svg>',
+    redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5l4 4-4 4"/><path d="M20 9H10a6 6 0 000 12h4"/></svg>',
+    clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14"/><path d="M10 7V4h4v3"/><path d="M7 7l1 13h8l1-13"/></svg>',
+    hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V5a1.5 1.5 0 013 0v6"/><path d="M11 10V4a1.5 1.5 0 013 0v7"/><path d="M14 11V6a1.5 1.5 0 013 0v8c0 4-2.5 7-6 7s-5-2-7-6l-1-2a1.4 1.4 0 012.4-1.4L8 14"/></svg>'
+  };
+  function steps(n) {
+    var s = el('span', { class: 'steps', style: '--c: var(--l' + n + ')', 'aria-hidden': 'true' });
+    for (var i = 1; i <= 5; i++) s.appendChild(el('i', { class: i <= n ? 'on' : '', style: 'height:' + (4 + i * 2) + 'px' }));
+    return s;
+  }
+  function lvlTag(n) { return el('span', { class: 'lvl', style: '--c: var(--l' + n + ')' }, [steps(n), 'Level ' + n + ' · ' + level(n).name]); }
+  function statusDot(id) {
+    if (isDone(id)) return el('span', { class: 'dot done st', title: 'Solved', text: '✓' });
+    if (store.done[id]) return el('span', { class: 'dot part st', title: 'Attempted', text: '•' });
+    return el('span', { class: 'dot st', title: 'Not attempted' });
+  }
+
+  /* ---------- structure drawings ---------- */
+  function molFigure(m, scale) {
+    var fig = el('figure', { class: 'mol' });
+    var src = (typeof STRUCT !== 'undefined') ? STRUCT[m.s] : null;
+    if (src) {
+      var holder = el('div', { html: src }), svg = holder.firstElementChild;
+      if (svg) {
+        var k = scale || 1;
+        svg.setAttribute('width', Math.round(svg.getAttribute('width') * k)); svg.setAttribute('height', Math.round(svg.getAttribute('height') * k));
+        svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', m.n || 'structure');
+        fig.appendChild(svg);
+      }
+    } else fig.appendChild(el('div', { class: 'fallback', text: m.s }));
+    if (m.n) fig.appendChild(el('figcaption', { text: m.n }));
+    return fig;
+  }
+  function schemeNode(q) {
+    var box = el('div', { class: 'scheme' });
+    q.scheme.forEach(function (it) {
+      if (it.s) box.appendChild(molFigure(it));
+      else if (it.plus) box.appendChild(el('span', { class: 'plus', text: '+' }));
+      else if (it.arrow) box.appendChild(el('div', { class: 'arrow' }, [el('span', { text: it.arrow[0] }), el('div', { class: 'shaft' }), el('span', { text: it.arrow[1] })]));
+      else if (it.q) box.appendChild(el('div', { class: 'blank', text: it.q }));
+      else if (it.t) box.appendChild(el('span', { class: 'stext', text: it.t }));
+    });
+    return box;
+  }
+  function schemeText(q) {
+    return q.scheme.map(function (it) {
+      if (it.s) return (it.n || 'structure') + ' [SMILES ' + it.s + ']';
+      if (it.plus) return '+';
+      if (it.arrow) return '--(' + it.arrow.filter(Boolean).join(' / ') + ')-->';
+      if (it.q) return '[blank ' + it.q + ']';
+      return it.t;
+    }).join(' ');
+  }
+
+  /* ---------- routing ---------- */
+  function route() {
+    var h = (location.hash || '').replace(/^#/, '');
+    leavePractice();
+    if (h.indexOf('q-') === 0 && Q[h.slice(2)]) return showQuestion(Q[h.slice(2)]);
+    if (h.indexOf('t-') === 0 && B.topics.some(function (t) { return t.id === h.slice(2); })) return showTopic(topic(h.slice(2)));
+    showHome();
+  }
+  function go(h) { if (('#' + h) === location.hash) route(); else location.hash = h; }
+  window.addEventListener('hashchange', route);
+
+  var backBtn = document.getElementById('back'), crumb = document.getElementById('crumb'), tally = document.getElementById('tally'), brand = document.getElementById('brand');
+  var backTarget = 'home';
+  backBtn.addEventListener('click', function () { go(backTarget); });
+  function chrome(back, crumbText) {
+    backBtn.hidden = !back; backTarget = back || 'home'; crumb.textContent = crumbText || '';
+    brand.classList.toggle('hide-sm', !!back);
+    var solved = B.questions.filter(function (q) { return isDone(q.id); }).length;
+    tally.textContent = solved + ' of ' + B.questions.length + ' solved';
+  }
+
+  /* ---------- home ---------- */
+  function nextUp() { for (var i = 0; i < ORDER.length; i++) if (!isDone(ORDER[i].id)) return ORDER[i]; return ORDER[0]; }
+  function qTile(q, showTopic) {
+    return el('button', { class: 'qtile', onclick: function () { go('q-' + q.id); } }, [
+      el('span', { class: 't', text: q.title }),
+      statusDot(q.id),
+      el('span', { class: 'm' }, [steps(q.level), showTopic ? topic(q.topic).short : level(q.level).name])
+    ]);
+  }
+  function showHome() {
+    chrome(null, '');
+    var solved = B.questions.filter(function (q) { return isDone(q.id); }).length, nu = nextUp();
+    var wrap = el('div', { class: 'wrap' });
+    wrap.appendChild(el('section', { class: 'intro' }, [
+      el('div', {}, [
+        el('div', { class: 'eyebrow', text: 'CHEM 210 · Exam 3 practice' }),
+        el('h1', { text: 'Substitution and elimination, drawn by hand' }),
+        el('p', { text: 'Pick a question, draw your answer with Apple Pencil, and get it marked against an exam-style point rubric.' })
+      ]),
+      el('div', { class: 'resume' }, [
+        el('div', { class: 'meter', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': B.questions.length, 'aria-valuenow': solved }, [el('i', { style: 'width:' + (100 * solved / B.questions.length) + '%' })]),
+        el('button', { class: 'btn primary', onclick: function () { go('q-' + nu.id); } }, [solved ? 'Continue: ' + nu.title : 'Start with a warm-up'])
+      ])
+    ]));
+    var seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Sort questions' });
+    [['topics', 'By topic'], ['levels', 'By difficulty']].forEach(function (m) {
+      seg.appendChild(el('button', { 'aria-pressed': String(store.homeMode === m[0]), text: m[1], onclick: function () { store.homeMode = m[0]; save(); showHome(); } }));
+    });
+    wrap.appendChild(seg);
+
+    if (store.homeMode === 'levels') {
+      B.levels.forEach(function (L) {
+        var qs = B.questions.filter(function (q) { return q.level === L.n; });
+        wrap.appendChild(el('section', { class: 'group' }, [
+          el('h2', {}, [lvlTag(L.n)]), el('p', { class: 'sub', text: L.blurb }),
+          el('div', { class: 'qlist' }, qs.map(function (q) { return qTile(q, true); }))
+        ]));
+      });
+    } else {
+      var grid = el('div', { class: 'topics' });
+      B.topics.forEach(function (t) {
+        var qs = B.questions.filter(function (q) { return q.topic === t.id; });
+        var done = qs.filter(function (q) { return isDone(q.id); }).length;
+        var lad = el('div', { class: 'ladder', 'aria-hidden': 'true' });
+        B.levels.forEach(function (L) {
+          var at = qs.filter(function (q) { return q.level === L.n; }), d = at.filter(function (q) { return isDone(q.id); }).length;
+          lad.appendChild(el('span', { style: 'height:' + (30 + L.n * 14) + '%' }, [el('i', { style: '--c: var(--l' + L.n + '); height:' + (at.length ? 100 * d / at.length : 0) + '%' })]));
+        });
+        grid.appendChild(el('button', { class: 'topic', onclick: function () { go('t-' + t.id); } }, [
+          el('div', {}, [el('h3', { text: t.name }), el('p', { text: t.blurb })]),
+          lad,
+          el('div', { class: 'foot' }, [el('span', { text: 'Warm-up to exam-level' }), el('span', { text: done + ' / ' + qs.length })])
+        ]));
+      });
+      wrap.appendChild(grid);
+    }
+    main.replaceChildren(wrap); main.scrollTop = 0;
+  }
+  function showTopic(t) {
+    chrome('home', t.name);
+    var wrap = el('div', { class: 'wrap' });
+    wrap.appendChild(el('section', { class: 'intro' }, [el('div', {}, [el('div', { class: 'eyebrow', text: 'Topic' }), el('h1', { text: t.name }), el('p', { text: t.blurb + '. Questions climb from a warm-up to exam level.' })])]));
+    B.levels.forEach(function (L) {
+      var qs = B.questions.filter(function (q) { return q.topic === t.id && q.level === L.n; });
+      if (!qs.length) return;
+      wrap.appendChild(el('section', { class: 'group' }, [el('h2', {}, [lvlTag(L.n)]), el('p', { class: 'sub', text: L.blurb }), el('div', { class: 'qlist' }, qs.map(function (q) { return qTile(q, false); }))]));
+    });
+    main.replaceChildren(wrap); main.scrollTop = 0;
+  }
+
+  /* ---------- drawing pad ---------- */
+  var EXPORT_INK = { ink: '#111827', blue: '#1d4ed8', red: '#c81e1e', green: '#15803d' };
+  var pad = null;
+  function screenInk() {
+    var cs = getComputedStyle(document.documentElement);
+    function v(n) { return cs.getPropertyValue(n).trim() || '#111'; }
+    return { ink: v('--pen-ink'), blue: v('--pen-blue'), red: v('--pen-red'), green: v('--pen-green') };
+  }
+  function paintStroke(ctx, st, inks, from) {
+    var p = st.pts, n = p.length / 3;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (st.tool === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = '#000'; ctx.fillStyle = '#000'; }
+    else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = inks[st.color]; ctx.fillStyle = inks[st.color]; }
+    if (n === 1) { ctx.beginPath(); ctx.arc(p[0], p[1], p[2] / 2, 0, 6.2832); ctx.fill(); return; }
+    for (var i = Math.max(1, from || 1); i < n; i++) {
+      var a = (i - 1) * 3, b = i * 3;
+      var x0 = i > 1 ? (p[a - 3] + p[a]) / 2 : p[a], y0 = i > 1 ? (p[a - 2] + p[a + 1]) / 2 : p[a + 1];
+      var last = i === n - 1, x1 = last ? p[b] : (p[a] + p[b]) / 2, y1 = last ? p[b + 1] : (p[a + 1] + p[b + 1]) / 2;
+      ctx.lineWidth = (p[a + 2] + p[b + 2]) / 2;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(p[a], p[a + 1], x1, y1); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  function liveStrokes(list) { var s = 0; for (var i = 0; i < list.length; i++) if (list[i].tool === 'clear') s = i + 1; return list.slice(s); }
+  function hasInk(list) { return liveStrokes(list).some(function (s) { return s.tool === 'pen'; }); }
+
+  function makePad(qid, sheet, onChange) {
+    var canvas = el('canvas', { 'aria-label': 'Drawing area' }), ghost = el('div', { class: 'ghost', text: 'Draw your answer here' });
+    sheet.appendChild(canvas); sheet.appendChild(ghost);
+    var ctx = canvas.getContext('2d');
+    var P = { strokes: drawings[qid] || (drawings[qid] = []), redo: [], tool: 'pen', color: 'ink', size: 2.6, finger: true, penSeen: false, manual: false, cur: null, pid: null, w: 0, h: 0 };
+    var dpr = 1;
+    function resize() {
+      var r = sheet.getBoundingClientRect(); if (!r.width || !r.height) return;
+      dpr = Math.min(window.devicePixelRatio || 1, 3); P.w = r.width; P.h = r.height;
+      canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr); repaint();
+    }
+    function repaint() {
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var inks = screenInk(); liveStrokes(P.strokes).forEach(function (s) { paintStroke(ctx, s, inks); });
+      ghost.hidden = liveStrokes(P.strokes).length > 0;
+    }
+    function pos(e) { var r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+    function width(e) {
+      if (P.tool === 'eraser') return e.pointerType === 'pen' ? 22 : 28;
+      if (e.pointerType === 'pen' && e.pressure > 0) return P.size * (0.45 + 1.25 * e.pressure);
+      return P.size;
+    }
+    function add(e) {
+      var xy = pos(e), p = P.cur.pts, n = p.length;
+      if (n && Math.abs(p[n - 3] - xy[0]) + Math.abs(p[n - 2] - xy[1]) < 0.6) return;
+      var w = width(e); if (n) w = p[n - 1] * 0.6 + w * 0.4;
+      p.push(Math.round(xy[0] * 10) / 10, Math.round(xy[1] * 10) / 10, Math.round(w * 100) / 100);
+    }
+    canvas.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'pen' && !P.penSeen) { P.penSeen = true; if (!P.manual) { P.finger = false; onChange(); } }
+      if (e.pointerType === 'touch' && !P.finger) return;
+      if (P.pid !== null) return;
+      e.preventDefault(); P.pid = e.pointerId;
+      try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+      P.cur = { tool: P.tool, color: P.color, pts: [] }; add(e); ghost.hidden = true;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); paintStroke(ctx, P.cur, screenInk());
+    });
+    canvas.addEventListener('pointermove', function (e) {
+      if (e.pointerId !== P.pid || !P.cur) return;
+      e.preventDefault();
+      var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null; if (!evs || !evs.length) evs = [e];
+      var before = P.cur.pts.length / 3; evs.forEach(add);
+      if (P.cur.pts.length / 3 > before) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); if (before <= 1) repaintCur(); else paintStroke(ctx, P.cur, screenInk(), Math.max(1, before - 1)); }
+    });
+    function repaintCur() { paintStroke(ctx, P.cur, screenInk()); }
+    function end(e) {
+      if (e.pointerId !== P.pid) return;
+      P.pid = null; if (!P.cur) return;
+      P.strokes.push(P.cur); P.redo.length = 0; P.cur = null; repaint(); onChange();
+    }
+    canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('touchstart', function (e) { e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    var ro = window.ResizeObserver ? new ResizeObserver(resize) : null; if (ro) ro.observe(sheet); else window.addEventListener('resize', resize);
+    resize();
+
+    P.repaint = repaint;
+    P.undo = function () { if (P.strokes.length) { P.redo.push(P.strokes.pop()); repaint(); onChange(); } };
+    P.redoIt = function () { if (P.redo.length) { P.strokes.push(P.redo.pop()); repaint(); onChange(); } };
+    P.clear = function () { if (liveStrokes(P.strokes).length) { P.strokes.push({ tool: 'clear', pts: [] }); P.redo.length = 0; repaint(); onChange(); } };
+    P.destroy = function () { if (ro) ro.disconnect(); else window.removeEventListener('resize', resize); };
+    P.toBlob = function () {
+      var list = liveStrokes(P.strokes), x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      list.forEach(function (s) { if (s.tool !== 'pen') return; for (var i = 0; i < s.pts.length; i += 3) { x0 = Math.min(x0, s.pts[i]); x1 = Math.max(x1, s.pts[i]); y0 = Math.min(y0, s.pts[i + 1]); y1 = Math.max(y1, s.pts[i + 1]); } });
+      var m = 28; x0 -= m; y0 -= m; x1 += m; y1 += m;
+      var w = Math.max(160, x1 - x0), h = Math.max(160, y1 - y0), k = Math.min(2.5, 1500 / Math.max(w, h));
+      var layer = document.createElement('canvas'); layer.width = Math.round(w * k); layer.height = Math.round(h * k);
+      var lc = layer.getContext('2d'); lc.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      list.forEach(function (s) { paintStroke(lc, s, EXPORT_INK); });
+      var out = document.createElement('canvas'); out.width = layer.width; out.height = layer.height;
+      var oc = out.getContext('2d'); oc.fillStyle = '#ffffff'; oc.fillRect(0, 0, out.width, out.height); oc.drawImage(layer, 0, 0);
+      return new Promise(function (res, rej) { out.toBlob(function (b) { b ? res(b) : rej(new Error('export')); }, 'image/png'); });
+    };
+    return P;
+  }
+  function themeChanged() { if (pad) pad.repaint(); }
+  if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', themeChanged); }
+  if (window.MutationObserver) new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  /* ---------- grading ---------- */
+  var gradeCtl = null;
+  function leavePractice() { if (gradeCtl) { gradeCtl.abort(); gradeCtl = null; } if (pad) { pad.destroy(); pad = null; } }
+  function buildPrompt(q) {
+    var total = q.rubric.reduce(function (a, r) { return a + r[0]; }, 0);
+    return [
+      'You are grading a student\'s hand-drawn answer to an Organic Chemistry I practice question on nucleophilic substitution and elimination (SN1, SN2, E1, E2). The attached image is the student\'s drawing, made with a stylus on a tablet. Black is the main ink; blue, red and green are the student\'s own highlights (often curved arrows or labels).',
+      '',
+      'QUESTION: ' + q.title + '. ' + q.prompt,
+      'GIVEN TO THE STUDENT: ' + schemeText(q),
+      '',
+      'ANSWER KEY (the student has not seen this): ' + q.answer.text + (q.answer.mols.length ? ' Key structures: ' + q.answer.mols.map(function (m) { return m.n + ' [SMILES ' + m.s + ']'; }).join('; ') + '.' : ''),
+      '',
+      'RUBRIC (' + total + ' points):',
+      q.rubric.map(function (r, i) { return (i + 1) + '. (' + r[0] + ' pt' + (r[0] > 1 ? 's' : '') + ') ' + r[1]; }).join('\n'),
+      '',
+      'HOW TO GRADE',
+      '- First read the drawing carefully and describe literally what is on the page: each structure, atom labels, charges, lone pairs, wedges and dashes, each curved arrow with where it starts and ends, and any written words. Base every decision on that reading. Never give credit for something you cannot see.',
+      '- Judge the chemistry, not the penmanship. Wobbly lines and uneven angles are fine. Accept any correct equivalent: skeletal, condensed or Lewis structures; any orientation or rotation; abbreviations such as Ph, Me, Et, OTs, OMs; either enantiomer where the key describes a racemic or unspecified result.',
+      '- Be strict where the rubric asks for it: stereochemistry must be unambiguous, formal charges and lone pairs must be present when requested, and a curved arrow must start at an electron source (a lone pair or a bond) and point to where the electrons go.',
+      '- A different answer that is chemically correct and fully answers the question earns the points even if it differs from the key.',
+      '- For each rubric item choose met = "yes", "partial" (clearly on the right track but incomplete or slightly wrong) or "no". Add a short note for each: what you saw that earned it, or exactly what is missing or wrong and why, addressed to the student as "you".',
+      '- If the page is blank, or you cannot make out enough to grade, set readable to false and say what would make it readable.',
+      '',
+      'Reply with only a JSON object in this shape:',
+      '{"readable": true, "seen": "one to three sentences describing what the drawing shows", "items": [{"n": 1, "met": "yes", "note": "..."}], "summary": "one or two sentences of overall feedback", "tip": "one concrete thing to practise next, or an empty string if everything was right"}',
+      'Include exactly one entry in "items" for each of the ' + q.rubric.length + ' rubric items, in order.'
+    ].join('\n');
+  }
+  var ERR = {
+    not_granted: 'Grading is off because Claude was not allowed for this page. You can still check yourself against the answer key.',
+    sampling_disabled: 'Claude is not available on this account, so drawings cannot be graded here. Use the answer key to check yourself.',
+    images_unavailable: 'This view cannot send drawings to Claude. Open the page in the Claude app or claude.ai to grade.',
+    rate_limited: 'Claude is busy or you have reached a usage limit. Wait a minute, then tap Grade again.',
+    session_expired: 'You have been signed out. Sign in to Claude again, then tap Grade.',
+    image_rejected: 'The drawing could not be sent. Try clearing stray marks and grading again.',
+    refused: 'Claude declined to grade this drawing. Redraw it and try again.',
+    invalid_json: 'The grade came back garbled. Tap Grade to try again.',
+    empty_completion: 'No grade came back. Tap Grade to try again.'
+  };
+  function normalize(q, r) {
+    var items = q.rubric.map(function (rb, i) {
+      var it = (r && Array.isArray(r.items) ? r.items : []).filter(function (x) { return x && Number(x.n) === i + 1; })[0] || (r && Array.isArray(r.items) ? r.items[i] : null) || {};
+      var met = String(it.met || 'no').toLowerCase(); if (met !== 'yes' && met !== 'partial') met = 'no';
+      return { met: met, note: String(it.note || '') };
+    });
+    var total = 0, got = 0;
+    q.rubric.forEach(function (rb, i) { total += rb[0]; got += rb[0] * (items[i].met === 'yes' ? 1 : items[i].met === 'partial' ? 0.5 : 0); });
+    return { readable: !(r && r.readable === false), seen: String((r && r.seen) || ''), summary: String((r && r.summary) || ''), tip: String((r && r.tip) || ''), items: items, got: got, total: total };
+  }
+
+  /* ---------- practice view ---------- */
+  function showQuestion(q) {
+    var idx = ORDER.indexOf(q), siblings = B.questions.filter(function (x) { return x.topic === q.topic; }).sort(function (a, b) { return a.level - b.level; });
+    var si = siblings.indexOf(q), prev = siblings[si - 1], next = siblings[si + 1] || null;
+    chrome('t-' + q.topic, topic(q.topic).name);
+
+    var qpane = el('section', { class: 'qpane' }), padpane = el('section', { class: 'padpane' });
+    var feedback = el('div', {}), keyBox = el('div', {}), hintBox = el('div', {});
+    var hintBtn = el('button', { class: 'btn', text: 'Show a hint', onclick: function () { hinted[q.id] = true; drawSide(); } });
+    var keyBtn = el('button', { class: 'btn', text: 'Show answer key', onclick: function () { revealed[q.id] = !revealed[q.id]; drawSide(); } });
+    qpane.appendChild(lvlTag(q.level));
+    qpane.appendChild(el('h2', { text: q.title }));
+    qpane.appendChild(el('p', { class: 'prompt', text: q.prompt }));
+    qpane.appendChild(schemeNode(q));
+    qpane.appendChild(el('div', { class: 'row' }, [hintBtn, keyBtn]));
+    qpane.appendChild(hintBox); qpane.appendChild(feedback); qpane.appendChild(keyBox);
+
+    function drawSide() {
+      hintBox.replaceChildren(); feedback.replaceChildren(); keyBox.replaceChildren();
+      hintBtn.hidden = !!hinted[q.id];
+      if (hinted[q.id]) hintBox.appendChild(el('div', { class: 'note', text: 'Hint: ' + q.hint }));
+      var r = results[q.id];
+      if (r) {
+        var frac = r.total ? r.got / r.total : 0;
+        var cls = !r.readable ? 'warn' : frac >= 0.9 ? 'good' : frac >= 0.5 ? 'warn' : 'bad';
+        var word = !r.readable ? 'Could not read it' : frac >= 0.9 ? 'Correct' : frac >= 0.5 ? 'Partly right' : 'Not yet';
+        var card = el('div', { class: 'card' }, [
+          el('div', { class: 'verdict' }, [el('span', { class: 'pill ' + cls, text: word }), el('span', { class: 'score', text: r.readable ? fmt(r.got) + ' / ' + r.total + ' points' : '' })]),
+          r.summary ? el('p', { style: 'margin:0', text: r.summary }) : null,
+          r.seen ? el('p', { class: 'seen' }, [el('b', { text: 'What was read from your drawing: ' }), r.seen]) : null
+        ]);
+        if (r.readable) {
+          card.appendChild(el('ul', { class: 'rubric' }, q.rubric.map(function (rb, i) {
+            var it = r.items[i];
+            return el('li', { class: it.met }, [
+              el('span', { class: 'mk', 'aria-label': it.met === 'yes' ? 'Earned' : it.met === 'partial' ? 'Partly earned' : 'Missed', text: it.met === 'yes' ? '✓' : it.met === 'partial' ? '½' : '✕' }),
+              el('div', {}, [rb[1], it.note ? el('small', { text: it.note }) : null]),
+              el('span', { class: 'pts', text: fmt(rb[0] * (it.met === 'yes' ? 1 : it.met === 'partial' ? 0.5 : 0)) + ' / ' + rb[0] })
+            ]);
+          })));
+          if (r.tip) card.appendChild(el('div', { class: 'note', text: 'Next: ' + r.tip }));
+        }
+        feedback.appendChild(card);
+      }
+      keyBtn.textContent = revealed[q.id] ? 'Hide answer key' : 'Show answer key';
+      if (revealed[q.id]) {
+        var kc = el('div', { class: 'card' }, [el('h3', { text: 'Answer key' })]);
+        if (q.answer.mols.length) kc.appendChild(el('div', { class: 'keymols' }, q.answer.mols.map(function (m) { return molFigure(m, 0.85); })));
+        kc.appendChild(el('p', { style: 'margin:0', text: q.answer.text }));
+        kc.appendChild(el('ul', { class: 'rubric' }, q.rubric.map(function (rb) {
+          return el('li', { class: 'plain' }, [el('span', { class: 'mk', text: String(rb[0]) }), el('div', { text: rb[1] }), el('span', { class: 'pts', text: rb[0] + (rb[0] > 1 ? ' pts' : ' pt') })]);
+        })));
+        kc.appendChild(el('div', { class: 'row' }, [
+          el('button', { class: 'btn', text: 'I had it right', onclick: function () { record(q.id, 1); chrome('t-' + q.topic, topic(q.topic).name); status('Marked as solved.'); } }),
+          el('button', { class: 'btn', text: 'Not yet', onclick: function () { record(q.id, 0); status('Marked for another try.'); } })
+        ]));
+        keyBox.appendChild(kc);
+      }
+    }
+    function fmt(n) { return (Math.round(n * 2) / 2).toString(); }
+
+    /* tools */
+    var tools = el('div', { class: 'tools' }), sheet = el('div', { class: 'sheet' });
+    var statusEl = el('div', { class: 'status', role: 'status' });
+    function status(t, err) { statusEl.className = 'status' + (err ? ' err' : ''); statusEl.textContent = t || ''; }
+    var swatches = ['ink', 'blue', 'red', 'green'].map(function (c) {
+      return el('button', { class: 'swatch', 'aria-label': (c === 'ink' ? 'Black' : c) + ' pen', style: '--c: var(--pen-' + c + ')', onclick: function () { pad.tool = 'pen'; pad.color = c; sync(); } }, [el('i')]);
+    });
+    var sizeDefs = [[1.8, 5, 'Fine'], [2.6, 8, 'Medium'], [4.2, 12, 'Bold']];
+    var sizeBtns = sizeDefs.map(function (s) { return el('button', { 'aria-label': s[2] + ' line', style: '--d:' + s[1] + 'px', onclick: function () { pad.size = s[0]; pad.tool = 'pen'; sync(); } }, [el('i')]); });
+    var eraserBtn = el('button', { class: 'iconbtn', 'aria-label': 'Eraser', html: ICON.eraser, onclick: function () { pad.tool = pad.tool === 'eraser' ? 'pen' : 'eraser'; sync(); } });
+    var undoBtn = el('button', { class: 'iconbtn', 'aria-label': 'Undo', html: ICON.undo, onclick: function () { pad.undo(); } });
+    var redoBtn = el('button', { class: 'iconbtn', 'aria-label': 'Redo', html: ICON.redo, onclick: function () { pad.redoIt(); } });
+    var clearBtn = el('button', { class: 'iconbtn', 'aria-label': 'Clear the page', html: ICON.clear, onclick: function () { pad.clear(); status('Page cleared. Undo brings it back.'); } });
+    var fingerBtn = el('button', { class: 'iconbtn', onclick: function () { pad.finger = !pad.finger; pad.manual = true; sync(); status(pad.finger ? 'Finger drawing is on.' : 'Pencil only. Your palm and fingers will not leave marks.'); } });
+    swatches.forEach(function (s) { tools.appendChild(s); });
+    tools.appendChild(el('div', { class: 'sizes', role: 'group', 'aria-label': 'Line weight' }, sizeBtns));
+    tools.appendChild(eraserBtn); tools.appendChild(el('span', { class: 'sp' }));
+    tools.appendChild(fingerBtn); tools.appendChild(undoBtn); tools.appendChild(redoBtn); tools.appendChild(clearBtn);
+
+    var gradeBtn = el('button', { class: 'btn primary', text: 'Grade my drawing' });
+    var stopBtn = el('button', { class: 'btn', text: 'Stop', hidden: '' });
+    var nextBtn = el('button', { class: 'btn', text: next ? 'Next question' : 'Back to topic', onclick: function () { go(next ? 'q-' + next.id : 't-' + q.topic); } });
+    padpane.appendChild(tools); padpane.appendChild(sheet);
+    padpane.appendChild(el('div', { class: 'actions' }, [statusEl, stopBtn, gradeBtn, nextBtn]));
+
+    main.replaceChildren(el('div', { class: 'practice' }, [qpane, padpane])); main.scrollTop = 0;
+    pad = makePad(q.id, sheet, sync);
+    function sync() {
+      if (!pad) return;
+      swatches.forEach(function (s, i) { s.setAttribute('aria-pressed', String(pad.tool === 'pen' && pad.color === ['ink', 'blue', 'red', 'green'][i])); });
+      sizeBtns.forEach(function (s, i) { s.setAttribute('aria-pressed', String(pad.size === sizeDefs[i][0])); });
+      eraserBtn.setAttribute('aria-pressed', String(pad.tool === 'eraser'));
+      undoBtn.disabled = !pad.strokes.length; redoBtn.disabled = !pad.redo.length; clearBtn.disabled = !liveStrokes(pad.strokes).length;
+      fingerBtn.setAttribute('aria-pressed', String(pad.finger)); fingerBtn.setAttribute('aria-label', pad.finger ? 'Finger drawing on' : 'Finger drawing off');
+      fingerBtn.innerHTML = ICON.hand + '<span>' + (pad.finger ? 'Finger on' : 'Pencil only') + '</span>';
+    }
+    sync(); drawSide();
+
+    samplePromise.then(function (sample) {
+      if (!pad || pad.strokes !== drawings[q.id]) return;
+      if (!sample) status('Grading needs Claude, which is not available in this view. You can still draw and check the answer key.');
+    });
+
+    gradeBtn.addEventListener('click', function () {
+      if (!hasInk(pad.strokes)) { status('Draw your answer first, then tap Grade.', true); return; }
+      var myPad = pad; gradeBtn.disabled = true; stopBtn.hidden = false;
+      statusEl.className = 'status'; statusEl.innerHTML = '<span class="spin"></span> Reading your drawing. This usually takes 10 to 40 seconds.';
+      var ctl = new AbortController(); gradeCtl = ctl;
+      stopBtn.onclick = function () { ctl.abort(); };
+      samplePromise.then(function (sample) {
+        if (!sample) throw { code: 'unavailable' };
+        return myPad.toBlob().then(function (blob) {
+          return sample.json(buildPrompt(q), { images: [blob], signal: ctl.signal, modelTier: 'default' });
+        });
+      }).then(function (raw) {
+        var r = normalize(q, raw); results[q.id] = r;
+        if (r.readable) record(q.id, r.total ? r.got / r.total : 0);
+        if (pad !== myPad) return;
+        chrome('t-' + q.topic, topic(q.topic).name); drawSide(); status(r.readable ? 'Graded. Your marks are beside the question.' : 'That drawing was hard to read. See the note beside the question.');
+        if (window.innerWidth < 860) feedback.scrollIntoView({ behavior: 'smooth', block: 'start' }); else qpane.scrollTo({ top: Math.max(0, feedback.offsetTop - 16), behavior: 'smooth' });
+      }).catch(function (e) {
+        if (pad !== myPad) return;
+        var code = e && e.code;
+        if (code === 'cancelled') status('Stopped.');
+        else if (code === 'unavailable' || code === 'capability_disabled' || code === 'not_declared' || code === 'capability_removed') status('Grading needs Claude, which is not available in this view. Use the answer key to check yourself.', true);
+        else status(ERR[code] || 'Grading was interrupted. Tap Grade to try again.', true);
+      }).then(function () {
+        if (gradeCtl === ctl) gradeCtl = null;
+        if (pad === myPad) { gradeBtn.disabled = false; stopBtn.hidden = true; }
+      });
+    });
+  }
+
+  route();
+})();
+</script>
