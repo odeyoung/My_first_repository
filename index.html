@@ -138,6 +138,25 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
 .rubric .plain .mk { background: var(--sunken); color: var(--muted); }
 .rubric small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
 .rubric .pts { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px; }
+.chat .msgs { display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 92%; padding: 10px 13px; border-radius: 16px; font-size: 15px; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 5px; }
+.msg.ai { align-self: flex-start; background: var(--sunken); border-bottom-left-radius: 5px; }
+.msg p { margin: 0; }
+.msg p + p, .msg p + ul, .msg p + ol, .msg ul + p, .msg ol + p { margin-top: 8px; }
+.msg ul, .msg ol { margin: 4px 0 0; padding-left: 20px; }
+.msg li + li { margin-top: 3px; }
+.msg .tag { display: block; font-size: 12px; opacity: .75; margin-top: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 6px 14px; font-size: 14px; min-height: 38px; }
+.chip.quiet { border-color: transparent; color: var(--muted); padding: 6px 8px; }
+.composer { display: flex; flex-direction: column; gap: 8px; }
+.composer textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  font: inherit; font-size: 16px; background: var(--bg); color: var(--ink); }
+.composer textarea::placeholder { color: var(--muted); }
+.composer .row2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.composer label { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); flex: 1; min-width: 0; }
+.composer input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
 .keymols { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; color: var(--ink); }
 
 .padpane { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12px; padding-right: max(12px, env(safe-area-inset-right, 0px)); gap: 10px;
@@ -209,7 +228,13 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
   var drawings = seed.drawings || {};   // question id -> list of strokes
   var results = seed.results || {};     // question id -> last grading result
   var revealed = {}, hinted = {};
-  if (hot && hot.snapshot) { try { hot.snapshot(function () { return { drawings: drawings, results: results }; }); } catch (e) {} }
+  var CHAT_KEY = 'ch7-sketch-lab-chats-v1';
+  var chats = seed.chats || null;      // question id -> list of {role, content, shown?, drawing?, cut?}
+  if (!chats) { chats = {}; try { var rc = localStorage.getItem(CHAT_KEY); if (rc) chats = JSON.parse(rc) || {}; } catch (e) {} }
+  function saveChats() {
+    try { var out = {}; for (var k in chats) if (chats[k] && chats[k].length) out[k] = chats[k].slice(-20); localStorage.setItem(CHAT_KEY, JSON.stringify(out)); } catch (e) {}
+  }
+  if (hot && hot.snapshot) { try { hot.snapshot(function () { return { drawings: drawings, results: results, chats: chats }; }); } catch (e) {} }
 
   var samplePromise = (window.claude && window.claude.use) ? window.claude.use('sample').catch(function () { return null; }) : Promise.resolve(null);
 
@@ -477,8 +502,8 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
   if (window.MutationObserver) new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   /* ---------- grading ---------- */
-  var gradeCtl = null;
-  function leavePractice() { if (gradeCtl) { gradeCtl.abort(); gradeCtl = null; } if (pad) { pad.destroy(); pad = null; } }
+  var gradeCtl = null, chatCtl = null;
+  function leavePractice() { if (gradeCtl) { gradeCtl.abort(); gradeCtl = null; } if (chatCtl) { chatCtl.abort(); chatCtl = null; } if (pad) { pad.destroy(); pad = null; } }
   function buildPrompt(q) {
     var total = q.rubric.reduce(function (a, r) { return a + r[0]; }, 0);
     return [
@@ -527,6 +552,63 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
     return { readable: !(r && r.readable === false), seen: String((r && r.seen) || ''), summary: String((r && r.summary) || ''), tip: String((r && r.tip) || ''), items: items, got: got, total: total };
   }
 
+  /* ---------- follow-up chat ---------- */
+  function tutorRules(q) {
+    var r = results[q.id];
+    var grade = 'The student has not had this drawing graded yet.';
+    if (r && r.readable) grade = 'LATEST GRADE of the student\'s drawing: ' + r.got + ' / ' + r.total + ' points. What the grader read from the drawing: ' + r.seen + '\n' +
+      q.rubric.map(function (rb, i) { return '- (' + rb[0] + ' pts) ' + rb[1] + ': ' + r.items[i].met + (r.items[i].note ? ' (' + r.items[i].note + ')' : ''); }).join('\n');
+    else if (r) grade = 'The grader could not read the student\'s last drawing.';
+    return [
+      'You are a friendly, precise organic chemistry tutor built into a study app for CHEM 210 (Organic Chemistry I) at the University of Michigan, Chapter 7: nucleophilic substitution and elimination (SN1, SN2, E1, E2). The student is working on the practice question below and is asking follow-up questions. These instructions come from the app, not the student.',
+      '',
+      'QUESTION: ' + q.title + '. ' + q.prompt,
+      'GIVEN: ' + schemeText(q),
+      'HINT the app offers: ' + q.hint,
+      'ANSWER KEY: ' + q.answer.text + (q.answer.mols.length ? ' Key structures: ' + q.answer.mols.map(function (m) { return m.n + ' [SMILES ' + m.s + ']'; }).join('; ') + '.' : ''),
+      'RUBRIC: ' + q.rubric.map(function (rb) { return '(' + rb[0] + ') ' + rb[1]; }).join('; '),
+      revealed[q.id] ? 'The student has opened the answer key.' : 'The student has NOT opened the answer key. Coach them toward the answer with questions and hints. Give the full answer only if they clearly ask for it.',
+      grade,
+      '',
+      'HOW TO ANSWER',
+      '- Be correct above all. If the student proposes something chemically wrong, say so kindly and explain why.',
+      '- Keep replies short for a narrow side panel: usually 2 to 6 sentences, or a short list using "- " or "1." at line starts. Use **bold** sparingly. No headings, tables, LaTeX or code blocks.',
+      '- Write formulas with Unicode: CH₃, H₂O, Br⁻, C⁺, δ+, ‡. Describe curved arrows in words, for example "arrow from the O lone pair to the carbon bearing Br".',
+      '- If an image is attached, it is the student\'s current hand drawing (black ink plus optional blue, red and green). Refer only to what you can actually see in it.',
+      '- If asked for a similar problem, write one new problem at the same level in words (name the starting material and reagents) and do not solve it unless asked.',
+      '- If the question is unrelated to chemistry, answer in one line and steer back to the problem.'
+    ].join('\n');
+  }
+  function inline(parent, text) {
+    text.split(/(\*\*[^*]+\*\*)/).forEach(function (part) {
+      if (/^\*\*[^*]+\*\*$/.test(part)) parent.appendChild(el('strong', { text: part.slice(2, -2) }));
+      else if (part) parent.appendChild(document.createTextNode(part));
+    });
+  }
+  function renderReply(node, text) {
+    node.replaceChildren();
+    var bullet = /^\s*(?:[-•*]|\d+[.)])\s+/;
+    text.replace(/\r/g, '').split(/\n{2,}/).forEach(function (block) {
+      var list = null, p = null;
+      block.split('\n').forEach(function (l) {
+        if (!l.trim()) return;
+        if (bullet.test(l)) {
+          if (!list) { list = el(/^\s*\d/.test(l) ? 'ol' : 'ul'); node.appendChild(list); }
+          p = null; var li = el('li'); inline(li, l.replace(bullet, '')); list.appendChild(li);
+        } else {
+          list = null;
+          if (!p) { p = el('p'); node.appendChild(p); } else p.appendChild(el('br'));
+          inline(p, l.replace(/^#+\s*/, ''));
+        }
+      });
+    });
+  }
+  var CHAT_ERR = {
+    not_granted: 'Claude was not allowed for this page, so it cannot answer here.',
+    images_unavailable: 'This view cannot send drawings. Untick "Show Claude my drawing" and ask again.',
+    prompt_too_large: 'This chat has grown too long. Clear it and start again.'
+  };
+
   /* ---------- practice view ---------- */
   function showQuestion(q) {
     var idx = ORDER.indexOf(q), siblings = B.questions.filter(function (x) { return x.topic === q.topic; }).sort(function (a, b) { return a.level - b.level; });
@@ -537,12 +619,106 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
     var feedback = el('div', {}), keyBox = el('div', {}), hintBox = el('div', {});
     var hintBtn = el('button', { class: 'btn', text: 'Show a hint', onclick: function () { hinted[q.id] = true; drawSide(); } });
     var keyBtn = el('button', { class: 'btn', text: 'Show answer key', onclick: function () { revealed[q.id] = !revealed[q.id]; drawSide(); } });
+    /* chat panel */
+    var chatBox = el('div', { class: 'card chat' });
+    var msgs = el('div', { class: 'msgs', 'aria-live': 'polite' });
+    var chips = el('div', { class: 'chips' });
+    var chatInput = el('textarea', { id: 'chat-input', rows: '2', placeholder: 'Ask a follow-up question. You can write here with Apple Pencil too.', 'aria-label': 'Your question for Claude' });
+    var withDrawing = el('input', { type: 'checkbox', id: 'chat-drawing' });
+    var drawLabel = el('label', { for: 'chat-drawing' }, [withDrawing, 'Show Claude my drawing']);
+    var sendBtn = el('button', { class: 'btn primary', text: 'Ask' });
+    var chatStop = el('button', { class: 'btn', text: 'Stop', hidden: '' });
+    var clearChat = el('button', { class: 'chip quiet', text: 'Clear chat' });
+    var composer = el('div', { class: 'composer' }, [chatInput, el('div', { class: 'row2' }, [drawLabel, chatStop, sendBtn])]);
+    var chatNote = el('p', { class: 'seen', role: 'status' });
+    var chatBusy = false, noSample = false, drawTouched = false;
+    chatBox.append(
+      el('div', { class: 'verdict' }, [el('h3', { text: 'Ask Claude' }), clearChat]),
+      el('p', { class: 'seen', text: 'Ask about this question, your grade, or the chemistry behind it. Claude knows the answer key but will coach you instead of giving it away unless you ask.' }),
+      msgs, chips, composer, chatNote);
+    var askBtn = el('button', { class: 'btn', text: 'Ask Claude', onclick: function () {
+      chatBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(function () { try { chatInput.focus({ preventScroll: true }); } catch (e) {} }, 350);
+    } });
+    withDrawing.addEventListener('change', function () { drawTouched = true; });
+    chatInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(chatInput.value); }
+    });
+    sendBtn.addEventListener('click', function () { send(chatInput.value); });
+    clearChat.addEventListener('click', function () { chats[q.id] = []; saveChats(); chatNote.textContent = ''; renderChat(); });
+    function refreshToggle() { var ink = !!(pad && hasInk(pad.strokes)); drawLabel.hidden = !ink; if (!drawTouched) withDrawing.checked = ink; }
+    function starters() {
+      var r = results[q.id], list = [];
+      if (r && r.readable && r.got < r.total) list.push('Why did I lose points?');
+      list.push(q.level >= 3 ? 'Walk me through the mechanism' : 'What is the key idea here?');
+      list.push('Check my drawing so far');
+      list.push('Give me a similar problem');
+      return list;
+    }
+    function bubble(t) {
+      var b = el('div', { class: 'msg ' + (t.role === 'user' ? 'me' : 'ai') });
+      if (t.role === 'user') { b.appendChild(el('p', { text: t.shown || t.content })); if (t.drawing) b.appendChild(el('span', { class: 'tag', text: 'Sent with your drawing' })); }
+      else renderReply(b, t.content);
+      if (t.cut) b.appendChild(el('span', { class: 'tag', text: t.cut }));
+      return b;
+    }
+    function renderChat() {
+      var log = chats[q.id] || [];
+      msgs.replaceChildren.apply(msgs, log.map(bubble));
+      msgs.hidden = !log.length;
+      clearChat.hidden = !log.length || chatBusy;
+      chips.replaceChildren.apply(chips, starters().map(function (t) {
+        return el('button', { class: 'chip', text: t, onclick: function () { send(t, t === 'Check my drawing so far'); } });
+      }));
+      chips.hidden = chatBusy || noSample;
+      composer.hidden = noSample;
+      sendBtn.disabled = chatBusy; chatStop.hidden = !chatBusy;
+    }
+    function send(text, needDrawing) {
+      text = (text || '').trim();
+      if (!text || chatBusy) return;
+      samplePromise.then(function (sample) {
+        if (!sample) { noSample = true; renderChat(); chatNote.textContent = 'Asking Claude works when this page is open in the Claude app or on claude.ai.'; return; }
+        var ink = !!(pad && hasInk(pad.strokes));
+        if (needDrawing && !ink) { chatNote.textContent = 'Draw something on the pad first, then ask Claude to check it.'; return; }
+        var useDrawing = ink && (needDrawing || withDrawing.checked);
+        var log = chats[q.id] || (chats[q.id] = []);
+        log.push({ role: 'user', content: text + (useDrawing ? '\n\n(My current drawing is attached as an image.)' : ''), shown: text, drawing: useDrawing });
+        chatInput.value = ''; chatNote.textContent = '';
+        chatBusy = true; renderChat();
+        var reply = el('div', { class: 'msg ai' }, [el('p', {}, [el('span', { class: 'spin' }), ' Thinking…'])]);
+        msgs.appendChild(reply); msgs.hidden = false;
+        reply.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        var ctl = new AbortController(), myPad = pad;
+        chatCtl = ctl; chatStop.onclick = function () { ctl.abort(); };
+        var turns = [{ role: 'user', content: tutorRules(q) }].concat(log.slice(-14).map(function (t) { return { role: t.role, content: t.content }; }));
+        (useDrawing ? pad.toBlob() : Promise.resolve(null)).then(function (blob) {
+          var opts = { signal: ctl.signal, cache: false, onText: function (u) { renderReply(reply, u.text); } };
+          if (blob) opts.images = [blob];
+          return sample(turns, opts);
+        }).then(function (res) {
+          log.push({ role: 'assistant', content: res.text, cut: res.truncated ? 'Cut short. Ask Claude to continue.' : '' });
+        }).catch(function (e) {
+          var code = e && e.code;
+          if (e && e.text) log.push({ role: 'assistant', content: e.text, cut: code === 'cancelled' ? 'Stopped.' : 'Interrupted.' });
+          if (code !== 'cancelled') chatNote.textContent = CHAT_ERR[code] || ERR[code] || 'Claude could not answer just now. Ask again in a moment.';
+          if (code === 'not_granted' || code === 'sampling_disabled') noSample = true;
+        }).then(function () {
+          if (chatCtl === ctl) chatCtl = null;
+          saveChats();
+          if (pad !== myPad) return;
+          chatBusy = false; renderChat();
+          var last = msgs.lastElementChild; if (last) last.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+      });
+    }
+
     qpane.appendChild(lvlTag(q.level));
     qpane.appendChild(el('h2', { text: q.title }));
     qpane.appendChild(el('p', { class: 'prompt', text: q.prompt }));
     qpane.appendChild(schemeNode(q));
-    qpane.appendChild(el('div', { class: 'row' }, [hintBtn, keyBtn]));
-    qpane.appendChild(hintBox); qpane.appendChild(feedback); qpane.appendChild(keyBox);
+    qpane.appendChild(el('div', { class: 'row' }, [hintBtn, keyBtn, askBtn]));
+    qpane.appendChild(hintBox); qpane.appendChild(feedback); qpane.appendChild(keyBox); qpane.appendChild(chatBox);
 
     function drawSide() {
       hintBox.replaceChildren(); feedback.replaceChildren(); keyBox.replaceChildren();
@@ -623,11 +799,13 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
       undoBtn.disabled = !pad.strokes.length; redoBtn.disabled = !pad.redo.length; clearBtn.disabled = !liveStrokes(pad.strokes).length;
       fingerBtn.setAttribute('aria-pressed', String(pad.finger)); fingerBtn.setAttribute('aria-label', pad.finger ? 'Finger drawing on' : 'Finger drawing off');
       fingerBtn.innerHTML = ICON.hand + '<span>' + (pad.finger ? 'Finger on' : 'Pencil only') + '</span>';
+      refreshToggle();
     }
-    sync(); drawSide();
+    sync(); drawSide(); renderChat();
 
     samplePromise.then(function (sample) {
       if (!pad || pad.strokes !== drawings[q.id]) return;
+      if (!sample) { noSample = true; renderChat(); chatNote.textContent = 'Asking Claude works when this page is open in the Claude app or on claude.ai.'; }
       if (!sample) status('Grading needs Claude, which is not available in this view. You can still draw and check the answer key.');
     });
 
@@ -646,7 +824,7 @@ main { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch
         var r = normalize(q, raw); results[q.id] = r;
         if (r.readable) record(q.id, r.total ? r.got / r.total : 0);
         if (pad !== myPad) return;
-        chrome('t-' + q.topic, topic(q.topic).name); drawSide(); status(r.readable ? 'Graded. Your marks are beside the question.' : 'That drawing was hard to read. See the note beside the question.');
+        chrome('t-' + q.topic, topic(q.topic).name); drawSide(); renderChat(); status(r.readable ? 'Graded. Your marks are beside the question.' : 'That drawing was hard to read. See the note beside the question.');
         if (window.innerWidth < 860) feedback.scrollIntoView({ behavior: 'smooth', block: 'start' }); else qpane.scrollTo({ top: Math.max(0, feedback.offsetTop - 16), behavior: 'smooth' });
       }).catch(function (e) {
         if (pad !== myPad) return;

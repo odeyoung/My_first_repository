@@ -8,4 +8,4 @@ A drawing-based practice app for CHEM 210 Exam 3 (Chapter 7: nucleophilic substi
 - `structures.js` holds the structure drawings. It is generated; after editing `questions.js` run
   `node tools/dump_smiles.js | python3 tools/build_structures.py` (needs `pip install rdkit`).
 
-Grading uses Claude through the published page, so it works when the app is opened from claude.ai or the Claude app.
+Each question also has an "Ask Claude" chat for follow-up questions. Grading and chat use Claude through the published page, so it works when the app is opened from claude.ai or the Claude app.
